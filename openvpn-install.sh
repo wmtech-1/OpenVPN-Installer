@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Secure OpenVPN server installer for Debian, Ubuntu, CentOS and Arch Linux
-# https://github.com/Angristan/OpenVPN-install
+# Secure OpenVPN server installer for CentOS or RedHat
+# https://github.com/wmtech-1/OpenVPN-install/
 
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -19,41 +19,13 @@ if grep -qs "CentOS release 5" "/etc/redhat-release"; then
 	exit 3
 fi
 
-if [[ -e /etc/debian_version ]]; then
-	OS="debian"
-	# Getting the version number, to verify that a recent version of OpenVPN is available
-	VERSION_ID=$(cat /etc/os-release | grep "VERSION_ID")
-	IPTABLES='/etc/iptables/iptables.rules'
-	SYSCTL='/etc/sysctl.conf'
-	if [[ "$VERSION_ID" != 'VERSION_ID="7"' ]] && [[ "$VERSION_ID" != 'VERSION_ID="8"' ]] && [[ "$VERSION_ID" != 'VERSION_ID="9"' ]] && [[ "$VERSION_ID" != 'VERSION_ID="14.04"' ]] && [[ "$VERSION_ID" != 'VERSION_ID="16.04"' ]] && [[ "$VERSION_ID" != 'VERSION_ID="17.10"' ]]; then
-		echo "Your version of Debian/Ubuntu is not supported."
-		echo "I can't install a recent version of OpenVPN on your system."
-		echo ""
-		echo "However, if you're using Debian unstable/testing, or Ubuntu beta,"
-		echo "then you can continue, a recent version of OpenVPN is available on these."
-		echo "Keep in mind they are not supported, though."
-		while [[ $CONTINUE != "y" && $CONTINUE != "n" ]]; do
-			read -p "Continue ? [y/n]: " -e CONTINUE
-		done
-		if [[ "$CONTINUE" = "n" ]]; then
-			echo "Ok, bye !"
-			exit 4
-		fi
-	fi
-elif [[ -e /etc/fedora-release ]]; then
-	OS=fedora
-	IPTABLES='/etc/iptables/iptables.rules'
-	SYSCTL='/etc/sysctl.d/openvpn.conf'
-elif [[ -e /etc/centos-release || -e /etc/redhat-release || -e /etc/system-release ]]; then
+if [[ -e /etc/centos-release || -e /etc/redhat-release || -e /etc/system-release ]]; then
 	OS=centos
 	IPTABLES='/etc/iptables/iptables.rules'
+	IP6TABLES='/etc/ip6tables/ip6tables.rules'
 	SYSCTL='/etc/sysctl.conf'
-elif [[ -e /etc/arch-release ]]; then
-	OS=arch
-	IPTABLES='/etc/iptables/iptables.rules'
-	SYSCTL='/etc/sysctl.d/openvpn.conf'
 else
-	echo "Looks like you aren't running this installer on a Debian, Ubuntu, CentOS or ArchLinux system"
+	echo "Looks like you aren't running this installer on a CentOS or RedHat system"
 	exit 4
 fi
 
@@ -92,12 +64,14 @@ if [[ "$IP" = "" ]]; then
 fi
 # Get Internet network interface with default route
 NIC=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
+# Get Internet network interface with default ipv6 route
+NIC6=$(ip -6 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
 
 if [[ -e /etc/openvpn/server.conf ]]; then
 	while :
 	do
 	clear
-		echo "OpenVPN-install (github.com/Angristan/OpenVPN-install)"
+		echo "OpenVPN-install (github.com/wmtech-1/OpenVPN-install)"
 		echo ""
 		echo "Looks like OpenVPN is already installed"
 		echo ""
@@ -156,6 +130,11 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			read -p "Do you really want to remove OpenVPN? [y/n]: " -e -i n REMOVE
 			if [[ "$REMOVE" = 'y' ]]; then
 				PORT=$(grep '^port ' /etc/openvpn/server.conf | cut -d " " -f 2)
+				PROTOCOL=$(grep '^proto ' /etc/openvpn/server.conf | cut -d " " -f 2 | tail -n 1)
+				IPV6E = "0"
+				if grep -qs "#IPv6 config start" "/etc/openvpn/server.conf"; then
+					IPV6E = "1"
+				fi
 				if pgrep firewalld; then
 					# Using both permanent and not permanent rules to avoid a firewalld reload.
 					firewall-cmd --zone=public --remove-port=$PORT/udp
@@ -174,6 +153,19 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 				fi
 				iptables -t nat -D POSTROUTING -o $NIC -s 10.8.0.0/24 -j MASQUERADE
 				iptables-save > $IPTABLES
+				if [[ "$IPV6E" = '1' ]]; then
+					if ip6tables -L -n | grep -qE 'REJECT|DROP'; then
+						if [[ "$PROTOCOL" = 'udp' ]]; then
+							ip6tables -D INPUT -p udp --dport $PORT -j ACCEPT
+						else
+							ip6tables -D INPUT -p tcp --dport $PORT -j ACCEPT
+						fi
+						ip6tables -D FORWARD -s fd6c:62d9:eb8c::/112 -j ACCEPT
+						ip6tables-save > $IP6TABLES
+					fi
+					ip6tables -t nat -D POSTROUTING -o $NIC6 -s fd6c:62d9:eb8c::/112 -j MASQUERADE
+					ip6tables-save > $IP6TABLES
+				fi
 				if hash sestatus 2>/dev/null; then
 					if sestatus | grep "Current mode" | grep -qs "enforcing"; then
 						if [[ "$PORT" != '1194' ]]; then
@@ -181,15 +173,11 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 						fi
 					fi
 				fi
-				if [[ "$OS" = 'debian' ]]; then
-					apt-get autoremove --purge -y openvpn
-				elif [[ "$OS" = 'arch' ]]; then
-					pacman -R openvpn --noconfirm
-				else
-					yum remove openvpn -y
-				fi
+				yum remove openvpn -y
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
+				rm -rf /var/log/openvpn
+				rm -rf /etc/logrotate.d/openvpn
 				echo ""
 				echo "OpenVPN removed!"
 			else
@@ -203,7 +191,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 	done
 else
 	clear
-	echo "Welcome to the secure OpenVPN installer (github.com/Angristan/OpenVPN-install)"
+	echo "Welcome to the secure OpenVPN installer (github.com/wmtech-1/OpenVPN-install)"
 	echo ""
 	# OpenVPN setup and first user creation
 	echo "I need to ask you a few questions before starting the setup"
@@ -314,6 +302,21 @@ else
 		3)
 		RSA_KEY_SIZE="4096"
 		;;
+	esac	
+	echo ""
+	echo "Enable IPv6? (ensure that your machine has IPv6 support):"
+	echo "   1) Yes"
+	echo "   2) No (default)"
+	while [[ $IPV6E != "1" && $IPV6E != "2" ]]; do
+		read -p "Enable IPv6 [1-2]: " -e -i 2 IPV6E
+	done
+	case $IPV6E in
+		1)
+		IPV6E="1"
+		;;
+		2)
+		IPV6E="0"
+		;;
 	esac
 	echo ""
 	echo "Finally, tell me a name for the client certificate and configuration"
@@ -325,65 +328,8 @@ else
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
 
-	if [[ "$OS" = 'debian' ]]; then
-		apt-get install ca-certificates gpg -y
-		# We add the OpenVPN repo to get the latest version.
-		# Debian 7
-		if [[ "$VERSION_ID" = 'VERSION_ID="7"' ]]; then
-			echo "deb http://build.openvpn.net/debian/openvpn/stable wheezy main" > /etc/apt/sources.list.d/openvpn.list
-			wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg | apt-key add -
-			apt-get update
-		fi
-		# Debian 8
-		if [[ "$VERSION_ID" = 'VERSION_ID="8"' ]]; then
-			echo "deb http://build.openvpn.net/debian/openvpn/stable jessie main" > /etc/apt/sources.list.d/openvpn.list
-			wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg | apt-key add -
-			apt update
-		fi
-		# Ubuntu 14.04
-		if [[ "$VERSION_ID" = 'VERSION_ID="14.04"' ]]; then
-			echo "deb http://build.openvpn.net/debian/openvpn/stable trusty main" > /etc/apt/sources.list.d/openvpn.list
-			wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg | apt-key add -
-			apt-get update
-		fi
-		# Ubuntu >= 16.04 and Debian > 8 have OpenVPN > 2.3.3 without the need of a third party repository.
-		# The we install OpenVPN
-		apt-get install openvpn iptables openssl wget ca-certificates curl -y
-		# Install iptables service
-		if [[ ! -e /etc/systemd/system/iptables.service ]]; then
-			mkdir /etc/iptables
-			iptables-save > /etc/iptables/iptables.rules
-			echo "#!/bin/sh
-iptables -F
-iptables -X
-iptables -t nat -F
-iptables -t nat -X
-iptables -t mangle -F
-iptables -t mangle -X
-iptables -P INPUT ACCEPT
-iptables -P FORWARD ACCEPT
-iptables -P OUTPUT ACCEPT" > /etc/iptables/flush-iptables.sh
-			chmod +x /etc/iptables/flush-iptables.sh
-			echo "[Unit]
-Description=Packet Filtering Framework
-DefaultDependencies=no
-Before=network-pre.target
-Wants=network-pre.target
-[Service]
-Type=oneshot
-ExecStart=/sbin/iptables-restore /etc/iptables/iptables.rules
-ExecReload=/sbin/iptables-restore /etc/iptables/iptables.rules
-ExecStop=/etc/iptables/flush-iptables.sh
-RemainAfterExit=yes
-[Install]
-WantedBy=multi-user.target" > /etc/systemd/system/iptables.service
-			systemctl daemon-reload
-			systemctl enable iptables.service
-		fi
-	elif [[ "$OS" = 'centos' || "$OS" = 'fedora' ]]; then
-		if [[ "$OS" = 'centos' ]]; then
-			yum install epel-release -y
-		fi
+	if [[ "$OS" = 'centos' ]]; then
+		yum install epel-release -y
 		yum install openvpn iptables openssl wget ca-certificates curl -y
 		# Install iptables service
 		if [[ ! -e /etc/systemd/system/iptables.service ]]; then
@@ -419,29 +365,38 @@ WantedBy=multi-user.target" > /etc/systemd/system/iptables.service
 			systemctl disable firewalld
 			systemctl mask firewalld
 		fi
-	else
-		# Else, the distro is ArchLinux
-		echo ""
-		echo ""
-		echo "As you're using ArchLinux, I need to update the packages on your system to install those I need."
-		echo "Not doing that could cause problems between dependencies, or missing files in repositories."
-		echo ""
-		echo "Continuing will update your installed packages and install needed ones."
-		while [[ $CONTINUE != "y" && $CONTINUE != "n" ]]; do
-			read -p "Continue ? [y/n]: " -e -i y CONTINUE
-		done
-		if [[ "$CONTINUE" = "n" ]]; then
-			echo "Ok, bye !"
-			exit 4
-		fi
-
-		if [[ "$OS" = 'arch' ]]; then
-			# Install dependencies
-			pacman -Syu openvpn iptables openssl wget ca-certificates curl --needed --noconfirm
-			iptables-save > /etc/iptables/iptables.rules # iptables won't start if this file does not exist
-			systemctl daemon-reload
-			systemctl enable iptables
-			systemctl start iptables
+		if [[ "$IPV6E" = '1' ]]; then
+			# Install ip6tables service
+			if [[ ! -e /etc/systemd/system/ip6tables.service ]]; then
+				mkdir /etc/ip6tables
+				ip6tables-save > /etc/ip6tables/ip6tables.rules
+				echo "#!/bin/sh
+ip6tables -F
+ip6tables -X
+ip6tables -t nat -F
+ip6tables -t nat -X
+ip6tables -t mangle -F
+ip6tables -t mangle -X
+ip6tables -P INPUT ACCEPT
+ip6tables -P FORWARD ACCEPT
+ip6tables -P OUTPUT ACCEPT" > /etc/ip6tables/flush-ip6tables.sh
+			chmod +x /etc/ip6tables/flush-ip6tables.sh
+			echo "[Unit]
+Description=IPv6 Packet Filtering Framework
+DefaultDependencies=no
+After=syslog.target iptables.service
+Wants=network-pre.target
+[Service]
+Type=oneshot
+ExecStart=/sbin/ip6tables-restore /etc/ip6tables/ip6tables.rules
+ExecReload=/sbin/ip6tables-restore /etc/ip6tables/ip6tables.rules
+ExecStop=/etc/ip6tables/flush-ip6tables.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/ip6tables.service
+				systemctl daemon-reload
+				systemctl enable ip6tables.service
+			fi
 		fi
 	fi
 	# Find out if the machine uses nogroup or nobody for the permissionless group
@@ -450,6 +405,19 @@ WantedBy=multi-user.target" > /etc/systemd/system/iptables.service
 	else
 		NOGROUP=nobody
 	fi
+	
+	# Setup logging and logrotate
+	mkdir /var/log/openvpn
+	echo -e "/var/log/openvpn/openvpn.log {
+ missingok
+ notifempty
+ copytruncate
+ compress
+ delaycompress
+ daily
+ rotate 7
+ create 0600 root root
+}" > /etc/logrotate.d/openvpn
 
 	# An old version of easy-rsa was available by default in some openvpn packages
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
@@ -482,8 +450,25 @@ WantedBy=multi-user.target" > /etc/systemd/system/iptables.service
 	# Make cert revocation list readable for non-root
 	chmod 644 /etc/openvpn/crl.pem
 
-	# Generate server.conf
-	echo "port $PORT" > /etc/openvpn/server.conf
+	# Generate ipv6 server.conf
+	if [[ "$IPV6E" = '1' ]]; then
+		echo -e "#IPv6 config start
+server-ipv6 fd6c:62d9:eb8c::/112" > /etc/openvpn/server.conf
+		if [[ "$PROTOCOL" = 'UDP' ]]; then
+			echo "proto udp6" >> /etc/openvpn/server.conf
+		elif [[ "$PROTOCOL" = 'TCP' ]]; then
+			echo "proto tcp6" >> /etc/openvpn/server.conf
+		fi
+		echo -e 'tun-ipv6
+push tun-ipv6
+push "route-ipv6 2000::/3"
+push "redirect-gateway ipv6"
+#IPv6 config end
+' >> /etc/openvpn/server.conf
+	fi
+
+	# Generate ipv4 server.conf
+	echo "port $PORT" >> /etc/openvpn/server.conf
 	if [[ "$PROTOCOL" = 'UDP' ]]; then
 		echo "proto udp" >> /etc/openvpn/server.conf
 	elif [[ "$PROTOCOL" = 'TCP' ]]; then
@@ -547,7 +532,13 @@ tls-server
 tls-version-min 1.2
 tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
 status openvpn.log
-verb 3" >> /etc/openvpn/server.conf
+log-append /var/log/openvpn/openvpn.log
+verb 3
+mute 3
+sndbuf 393216
+rcvbuf 393216" >> /etc/openvpn/server.conf
+	echo 'push "sndbuf 393216"' >> /etc/openvpn/server.conf
+	echo 'push "rcvbuf 393216"' >> /etc/openvpn/server.conf
 
 	# Create the sysctl configuration file if needed (mainly for Arch Linux)
 	if [[ ! -e $SYSCTL ]]; then
@@ -561,6 +552,17 @@ verb 3" >> /etc/openvpn/server.conf
 	fi
 	# Avoid an unneeded reboot
 	echo 1 > /proc/sys/net/ipv4/ip_forward
+	
+	# Enable net.ipv6.ip_forward for the system
+	if [[ "$IPV6E" = '1' ]]; then
+		sed -i '/\<net.ipv6.conf.all.forwarding\>/c\net.ipv6.conf.all.forwarding=1' $SYSCTL
+		if ! grep -q "\<net.ipv6.conf.all.forwarding\>" $SYSCTL; then
+			echo 'net.ipv6.conf.all.forwarding=1' >> $SYSCTL
+		fi
+		# Avoid an unneeded reboot
+		echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+	fi
+	
 	# Set NAT for the VPN subnet
 	iptables -t nat -A POSTROUTING -o $NIC -s 10.8.0.0/24 -j MASQUERADE
 	# Save persitent iptables rules
@@ -593,6 +595,29 @@ verb 3" >> /etc/openvpn/server.conf
 		# Save persitent OpenVPN rules
         iptables-save > $IPTABLES
 	fi
+	
+	if [[ "$IPV6E" = '1' ]]; then
+		# Set NAT for the VPN subnet
+		ip6tables -t nat -A POSTROUTING -o $NIC6 -s fd6c:62d9:eb8c::/112 -j MASQUERADE
+		# Save persitent iptables rules
+		ip6tables-save > $IP6TABLES
+
+		if ip6tables -L -n | grep -qE 'REJECT|DROP'; then
+			# If ip6tables has at least one REJECT rule, we asume this is needed.
+			# Not the best approach but I can't think of other and this shouldn't
+			# cause problems.
+			if [[ "$PROTOCOL" = 'UDP' ]]; then
+				ip6tables -I INPUT -p udp --dport $PORT -j ACCEPT
+			elif [[ "$PROTOCOL" = 'TCP' ]]; then
+				ip6tables -I INPUT -p tcp --dport $PORT -j ACCEPT
+			fi
+			ip6tables -I FORWARD -s fd6c:62d9:eb8c::/112 -j ACCEPT
+			ip6tables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+			# Save persitent OpenVPN rules
+			ip6tables-save > $IP6TABLES
+		fi
+	fi	
+	
 	# If SELinux is enabled and a custom port was selected, we need this
 	if hash sestatus 2>/dev/null; then
 		if sestatus | grep "Current mode" | grep -qs "enforcing"; then
@@ -610,36 +635,12 @@ verb 3" >> /etc/openvpn/server.conf
 		fi
 	fi
 	# And finally, restart OpenVPN
-	if [[ "$OS" = 'debian' ]]; then
-		# Little hack to check for systemd
-		if pgrep systemd-journal; then
-				#Workaround to fix OpenVPN service on OpenVZ
-				sed -i 's|LimitNPROC|#LimitNPROC|' /lib/systemd/system/openvpn\@.service
-				sed -i 's|/etc/openvpn/server|/etc/openvpn|' /lib/systemd/system/openvpn\@.service
-				sed -i 's|%i.conf|server.conf|' /lib/systemd/system/openvpn\@.service
-				systemctl daemon-reload
-				systemctl restart openvpn
-				systemctl enable openvpn
-		else
-			/etc/init.d/openvpn restart
-		fi
+	if pgrep systemd-journal; then
+		systemctl restart openvpn@server.service
+		systemctl enable openvpn@server.service
 	else
-		if pgrep systemd-journal; then
-			if [[ "$OS" = 'arch' || "$OS" = 'fedora' ]]; then
-				#Workaround to avoid rewriting the entire script for Arch & Fedora
-				sed -i 's|/etc/openvpn/server|/etc/openvpn|' /usr/lib/systemd/system/openvpn-server@.service
-				sed -i 's|%i.conf|server.conf|' /usr/lib/systemd/system/openvpn-server@.service
-				systemctl daemon-reload
-				systemctl restart openvpn-server@openvpn.service
-				systemctl enable openvpn-server@openvpn.service
-			else
-				systemctl restart openvpn@server.service
-				systemctl enable openvpn@server.service
-			fi
-		else
-			service openvpn restart
-			chkconfig openvpn on
-		fi
+		service openvpn restart
+		chkconfig openvpn on
 	fi
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit/Scaleway users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
@@ -677,7 +678,9 @@ tls-client
 tls-version-min 1.2
 tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
 setenv opt block-outside-dns
-verb 3" >> /etc/openvpn/client-template.txt
+verb 3
+ping 10
+float" >> /etc/openvpn/client-template.txt
 
 	# Generate the custom client.ovpn
 	newclient "$CLIENT"
