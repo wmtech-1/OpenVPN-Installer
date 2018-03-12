@@ -1,13 +1,8 @@
-# OpenVPN-install
+# OpenVPN-install by WMTech
 
-OpenVPN installer for Debian, Ubuntu, Fedora, CentOS and Arch Linux.
+OpenVPN installer for CentOS and RedHat Linux.
 
 This script will let you setup your own secure VPN server in just a few minutes.
-
-Here is a preview of the installer :
-
-![](https://lut.im/IzjFrfhM18/DY8KD91W0uMhEgLp.png)
-![](https://lut.im/eODTn8Sa9y/euCqh0wzXwlz3UNs.png)
 
 ## Usage
 
@@ -18,7 +13,7 @@ You can get a cheap VPS to run this script for $2.50/month worldwide at [Vultr](
 First, get the script and make it executable :
 
 ```bash
-wget https://raw.githubusercontent.com/Angristan/OpenVPN-install/master/openvpn-install.sh
+wget https://raw.githubusercontent.com/wmtech-1/OpenVPN-install/master/openvpn-install.sh
 chmod +x openvpn-install.sh
 ```
 
@@ -34,15 +29,11 @@ When OpenVPN is installed, you can run the script again, and you will get the ch
 - Remove a client
 - Uninstall OpenVPN
 
-![](https://i.imgur.com/AlW9g7t.png)
+## The fork of the fork
 
-## The fork
+This script is based on the great work of [Nyr and its contributors](https://github.com/Nyr/openvpn-install) and [Angristan and its contributors](https://github.com/Angristan/OpenVPN-install).
 
-This script is based on the great work of [Nyr and its contributors](https://github.com/Nyr/openvpn-install).
-
-I made it because I wanted to have a more secured OpenVPN out-of-the-box. It works like the original script, but is more focused on privacy and espicially better encryption. Nyr's original script uses mainly default parameters regarding encryption, and some of them are unsecure. See [#encryption](#encryption).
-
-Also, Nyr and myself clearly have not the same point of view regarding this script, that's why it's a fork.
+I made it because I wanted to have a more secured OpenVPN out-of-the-box with IPv6 support and log files. It works like the original script by Angristan and Nyr, but has support for IPv6, some bug fixes and adds log files. Nyr's original script uses mainly default parameters regarding encryption, and some of them are unsecure. Angristan focused at privacy and encryption. See [#encryption](#encryption).
 
 The only drawback is that you need to use a recent version of OpenVPN, because some parameters that requires TLS 1.2 are only availble since OpenVPN 2.3.3. Therefore I restrain the compatibility of this script to a few but widely used GNU/Linux distributions, to get a recent version of OpenVPN from trusted third-party repositories, if needed. That is not a complete drawback tough, because it means that you can have the latest version with all the new features and security fixes. See [compatibilty](#compatibility).
 
@@ -50,44 +41,22 @@ On the client-side, it's less problematic, but if you want to use an OpenVPN ser
 
 **TL;DR**, this script is relatively secure, and you can just press enter in the setup.
 
-**[A Pull Request](https://github.com/Angristan/OpenVPN-install/pull/96) is currently being worked on to implement the latest OpenVPN 2.4 features.**
-
 ## Compatibility
 
 The script is made to work on these OS and architectures :
 
-- **Debian 7** (i386, amd64)
-- **Debian 8** (i386, amd64)
-- **Debian 9** (i386, amd64, armhf, arm64)
-- **Ubuntu 14.04 LTS** (i386, amd64)
-- **Ubuntu 16.04 LTS** (i386, amd64)
-- **Ubuntu 17.10** (i386, amd64, armhf, arm64)
-- **Fedora 25** (amd64)
-- **Fedora 26** (amd64)
-- **Fedora 27** (amd64)
 - **CentOS 6** (i386, amd64)
 - **CentOS 7** (i386, amd64, arm64)
-- **Arch Linux** (i686, amd64, arm64)
-
-(It should also work on Debian unstable/testing and Ubuntu beta).
-
-If your're using an Ubuntu version that is not supported by the script, be aware that it's not supported by Ubuntu either, thus it's insecure.
 
 ## Features
 
 This fork includes the following features :
 
 - Every feature of the [original script](https://github.com/Nyr/openvpn-install)
-- Better encryption, see below
-- Better DNS resolvers, see below
-- Choice between TCP and UDP (UDP is still recommended)
-- Run server in [unprivileged mode](https://github.com/Angristan/OpenVPN-install/blob/master/openvpn-install.sh#L426), reducing risks to the system
-- [Block DNS leak on Windows 10](https://community.openvpn.net/openvpn/ticket/605)
-- No comp-lzo, as [compression is a vector for oracle attacks, e.g. CRIME or BREACH](https://github.com/BetterCrypto/Applied-Crypto-Hardening/pull/91#issuecomment-75388575)
-- [Arch Linux support](https://github.com/Angristan/OpenVPN-install/pull/2)
-- Up-to-date OpenVPN thanks to [EPEL](http://fedoraproject.org/wiki/EPEL) for CentOS and [swupdate.openvpn.net](https://community.openvpn.net/openvpn/wiki/OpenvpnSoftwareRepos) for Ubuntu and Debian. These are third-party yet trusted repositories.
-- Randomized certificate name
-- Other improvements !
+- Every feature of the [Angristan fork](https://github.com/Angristan/OpenVPN-install)
+- IPv6 support
+- Log file and rotation
+- Bug fixes with script removal
 
 ## DNS
 
@@ -109,13 +78,9 @@ Any other fast, trustable and neutral servers proposition is welcome.
 
 ## Encryption
 
-The main reason why I made this fork is to improve the encryption. Indeed, OpenVPN's default parameters are weak (and that's what [Nyr's script](https://github.com/Nyr/openvpn-install) uses).
+The main reason why Angristan made this fork was to improve the encryption. Indeed, OpenVPN's default parameters are weak (and that's what [Nyr's script](https://github.com/Nyr/openvpn-install) uses).
 
-I want to justify all my choices regarding the encryption settings I have chosen, to prove that I'm not some random noob as some may think. 😉
-
-However I'm far from a crypto expert, so don't hesitate to doubt what I say (I put links to my sources anyway), and to open an issue to correct me.
-
-OpenVPN 2.4 will be a great update on the encryption part, because we'll be able to use elliptic curves, so ECDSA and ECDH (as well for the control channel), and AES GCM. They are faster and more secure. I will, of course, update the script when it will be available.
+OpenVPN 2.4 will be a great update on the encryption part, because we'll be able to use elliptic curves, so ECDSA and ECDH (as well for the control channel), and AES GCM. They are faster and more secure.
 
 **Note:** With OpenVPN's default parameters, you have a relatively weak encryption. Nonetheless, your trafic is still encrypted, so unless you're under surveillance, probably no one will try to decrypt it. Yet it's not a reason to use old and weak algorithm when there are much better ones available. 😉
 
@@ -255,8 +220,6 @@ TLS-Auth is not enabled by default by OpenVPN, but it is in this script.
 
 ## Credits & Licence
 
-Thanks to the [contributors](https://github.com/Angristan/OpenVPN-install/graphs/contributors) and of course Nyr's orginal work.
-
-[Old repo](https://github.com/Angristan/OpenVPN-install-fork-old)
+Thanks to the [contributors](https://github.com/wmtech-1/OpenVPN-install/graphs/contributors), Angristan and of course Nyr's orginal work.
 
 [MIT Licence](https://raw.githubusercontent.com/Angristan/openvpn-install/master/LICENSE)
