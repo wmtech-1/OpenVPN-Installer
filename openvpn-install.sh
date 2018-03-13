@@ -15,18 +15,28 @@ if [[ ! -e /dev/net/tun ]]; then
 fi
 
 if grep -qs "CentOS release 5" "/etc/redhat-release"; then
-	echo "CentOS 5 is too old and not supported"
+	echo "CentOS 5 is too old and not supported. Please upgrade to CentOS 7"
 	exit 3
+fi
+
+if grep -qs "CentOS release 6" "/etc/redhat-release"; then
+	echo "CentOS 6 is too old and no longer supported. Please upgrade to CentOS 7"
+	exit 4
 fi
 
 if [[ -e /etc/centos-release || -e /etc/redhat-release || -e /etc/system-release ]]; then
 	OS=centos
-	IPTABLES='/etc/iptables/iptables.rules'
-	IP6TABLES='/etc/ip6tables/ip6tables.rules'
+	if [[ -e /usr/lib/systemd/system/iptables.service ]]; then
+		IPTABLES='/etc/sysconfig/iptables'
+		IP6TABLES='/etc/sysconfig/ip6tables'
+	else
+		IPTABLES='/etc/iptables/iptables.rules'
+		IP6TABLES='/etc/ip6tables/ip6tables.rules'
+	fi
 	SYSCTL='/etc/sysctl.conf'
 else
 	echo "Looks like you aren't running this installer on a CentOS or RedHat system"
-	exit 4
+	exit 5
 fi
 
 newclient () {
@@ -100,7 +110,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			if [[ "$NUMBEROFCLIENTS" = '0' ]]; then
 				echo ""
 				echo "You have no existing clients!"
-				exit 5
+				exit 6
 			fi
 			echo ""
 			echo "Select the existing client certificate you want to revoke"
@@ -149,6 +159,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 						iptables -D INPUT -p tcp --dport $PORT -j ACCEPT
 					fi
 					iptables -D FORWARD -s 10.8.0.0/24 -j ACCEPT
+					iptables -D INPUT -i tun+ -j ACCEPT
 					iptables-save > $IPTABLES
 				fi
 				iptables -t nat -D POSTROUTING -o $NIC -s 10.8.0.0/24 -j MASQUERADE
@@ -161,6 +172,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 							ip6tables -D INPUT -p tcp --dport $PORT -j ACCEPT
 						fi
 						ip6tables -D FORWARD -s fd6c:62d9:eb8c::/112 -j ACCEPT
+						ip6tables -D INPUT -i tun+ -j ACCEPT
 						ip6tables-save > $IP6TABLES
 					fi
 					ip6tables -t nat -D POSTROUTING -o $NIC6 -s fd6c:62d9:eb8c::/112 -j MASQUERADE
@@ -332,9 +344,9 @@ else
 		yum install epel-release -y
 		yum install openvpn iptables openssl wget ca-certificates curl -y
 		# Install iptables service
-		if [[ ! -e /etc/systemd/system/iptables.service ]]; then
+		if [[ ! -e /usr/lib/systemd/system/iptables.service  && ! -e /etc/systemd/system/iptables.service ]]; then
 			mkdir /etc/iptables
-			iptables-save > /etc/iptables/iptables.rules
+			iptables-save > $IPTABLES
 			echo "#!/bin/sh
 iptables -F
 iptables -X
@@ -367,9 +379,9 @@ WantedBy=multi-user.target" > /etc/systemd/system/iptables.service
 		fi
 		if [[ "$IPV6E" = '1' ]]; then
 			# Install ip6tables service
-			if [[ ! -e /etc/systemd/system/ip6tables.service ]]; then
+			if [[ ! -e /usr/lib/systemd/system/ip6tables.service && ! -e /etc/systemd/system/ip6tables.service ]]; then
 				mkdir /etc/ip6tables
-				ip6tables-save > /etc/ip6tables/ip6tables.rules
+				ip6tables-save > $IP6TABLES
 				echo "#!/bin/sh
 ip6tables -F
 ip6tables -X
@@ -531,7 +543,7 @@ $CIPHER
 tls-server
 tls-version-min 1.2
 tls-cipher TLS-DHE-RSA-WITH-AES-128-GCM-SHA256
-status openvpn.log
+status openvpn-status.log
 log-append /var/log/openvpn/openvpn.log
 verb 3
 mute 3
@@ -592,6 +604,7 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 		fi
 		iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+		iptables -I INPUT -i tun+ -j ACCEPT
 		# Save persitent OpenVPN rules
         iptables-save > $IPTABLES
 	fi
@@ -613,6 +626,7 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 			fi
 			ip6tables -I FORWARD -s fd6c:62d9:eb8c::/112 -j ACCEPT
 			ip6tables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+			ip6tables -I INPUT -i tun+ -j ACCEPT
 			# Save persitent OpenVPN rules
 			ip6tables-save > $IP6TABLES
 		fi
