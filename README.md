@@ -8,7 +8,7 @@ This script will let you setup your own secure VPN server in just a few minutes.
 
 **You have to enable the TUN module otherwise OpenVPN won't work.** Ask your host if you don't know how to do it. If the TUN module is not enabled, the script will warn you and exit.
 
-You can get a cheap VPS to run this script for $2.50/month worldwide at [Vultr](https://goo.gl/Xyd1Sc) or 3€/month for unlimited bandwidth in France at [PulseHeberg](https://goo.gl/76yqW5).
+You can get a cheap VPS to run this script for $5/month worldwide at [Linode](https://222.at/kQe6) or [UpCloud](https://222.at/P91t).
 
 First, get the script and make it executable :
 
