@@ -1,4 +1,4 @@
-# OpenVPN-install by WMTech
+# OpenVPN-installer by WMTech
 
 OpenVPN installer for CentOS and RedHat Linux.
 
@@ -13,7 +13,7 @@ You can get a cheap VPS to run this script for $5/month worldwide at [Linode](ht
 First, get the script and make it executable :
 
 ```bash
-wget https://raw.githubusercontent.com/wmtech-1/OpenVPN-install/master/openvpn-install.sh
+wget https://raw.githubusercontent.com/wmtech-1/OpenVPN-Installer/master/openvpn-install.sh
 chmod +x openvpn-install.sh
 ```
 
@@ -220,6 +220,6 @@ TLS-Auth is not enabled by default by OpenVPN, but it is in this script.
 
 ## Credits & Licence
 
-Thanks to the [contributors](https://github.com/wmtech-1/OpenVPN-install/graphs/contributors), Angristan and of course Nyr's orginal work.
+Thanks to the [contributors](https://github.com/wmtech-1/OpenVPN-Installer/graphs/contributors), Angristan and of course Nyr's orginal work.
 
-[MIT Licence](https://raw.githubusercontent.com/Angristan/openvpn-install/master/LICENSE)
+[MIT Licence](https://raw.githubusercontent.com/wmtech-1/OpenVPN-Installer/master/LICENSE)
