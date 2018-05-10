@@ -65,6 +65,7 @@ The script will ask you which DNS resolvers you want to use when connected to th
 Here are the possibilities :
 
 - Current system resolvers, those that are in `/etc/resolv.conf`
+- [Cloudflare](https://1.1.1.1/), recommended, fastest resolvers available (Anycast servers)
 - [Quad9](https://www.quad9.net), recommended, security and privacy oriented, fast worldwide (Anycast servers)
 - [FDN's DNS Servers](http://www.fdn.fr/actions/dns/), recommended if you're in western europe (France)
 - [DNS.WATCH DNS Servers](https://dns.watch/index), recommended if you're in western europe (Germany)
@@ -112,7 +113,7 @@ It also supports SHA1 and MD5, which are unsafe, and all the SHA2 family. I didn
 
 ### Data channel's cipher
 
-By default, OpenVPN uses `BF-CBC` as the data channel cipher. Blowfish is an old (1993) an weak alogorithm. What's *funny* is that even the official OpenVPN documentation admits it.
+By default, OpenVPN uses `BF-CBC` as the data channel cipher. Blowfish is an old (1993) and weak alogorithm. What's *funny* is that even the official OpenVPN documentation admits it.
 
 >The default is BF-CBC, an abbreviation for Blowfish in Cipher Block Chaining mode.
 Using BF-CBC is no longer recommended, because of its 64-bit block size. This small block size allows attacks based on collisions, as demonstrated by SWEET32. See https://community.openvpn.net/openvpn/wiki/SWEET32 for details.
