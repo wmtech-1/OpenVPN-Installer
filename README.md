@@ -33,7 +33,7 @@ When OpenVPN is installed, you can run the script again, and you will get the ch
 
 This script is based on the great work of [Nyr and its contributors](https://github.com/Nyr/openvpn-install) and [Angristan and its contributors](https://github.com/Angristan/OpenVPN-install).
 
-I made it because I wanted to have a more secured OpenVPN out-of-the-box with IPv6 support and log files. It works like the original script by Angristan and Nyr, but has support for IPv6, some bug fixes and adds log files. Nyr's original script uses mainly default parameters regarding encryption, and some of them are unsecure. Angristan focused at privacy and encryption. See [#encryption](#encryption).
+I made it because I wanted to have a more secured OpenVPN out-of-the-box with IPv6 support and log files. It works like the original script by Angristan and Nyr, but has support for IPv6, some bug fixes and adds log files. Nyr's original script uses mainly default parameters regarding encryption, and some of them are insecure. Angristan focused at privacy and encryption. See [#encryption](#encryption).
 
 The only drawback is that you need to use a recent version of OpenVPN, because some parameters that requires TLS 1.2 are only availble since OpenVPN 2.3.3. Therefore I restrain the compatibility of this script to a few but widely used GNU/Linux distributions, to get a recent version of OpenVPN from trusted third-party repositories, if needed. That is not a complete drawback tough, because it means that you can have the latest version with all the new features and security fixes. See [compatibilty](#compatibility).
 
@@ -57,6 +57,8 @@ This fork includes the following features :
 - IPv6 support
 - Log file and rotation
 - Bug fixes with script removal
+- Randomized certificate name
+- The ability to create passwordless clients and clients protected with a password
 
 ## DNS
 
@@ -150,7 +152,7 @@ The [SWEET32 vulnerability page](https://community.openvpn.net/openvpn/wiki/SWEE
 
 Indeed, AES is today's standard. It's the fastest and more secure cipher available today. [SEED](https://en.wikipedia.org/wiki/SEED) and [Camellia](https://en.wikipedia.org/wiki/Camellia_(cipher)) are not vulnerable to date but are slower than AES and relatively less trusted.
 
-As they have not any proven vulnerabilities, I decided to give the user the choice to use them, though I don't see any particular reason to this day to use it. Maybe someday if AES happens to be broken. Here is an exemple about [why Camellia is good, but AES is better and should be used](http://crypto.stackexchange.com/questions/476/why-does-nobody-use-or-break-the-camellia-cipher/477#477).
+As they have not any proven vulnerabilities, I decided to give the user the choice to use them, though I don't see any particular reason to this day to use it. Maybe someday if AES happens to be broken. Here is an example about [why Camellia is good, but AES is better and should be used](http://crypto.stackexchange.com/questions/476/why-does-nobody-use-or-break-the-camellia-cipher/477#477).
 
 Currently AES is only available in its CBC mode, which is weaker than GCM.
 
@@ -178,7 +180,7 @@ Thus, the best data channel cipher currently available in OpenVPN is `AES-128-CB
 
 ### Control channel's cipher
 
-According to the [Hardening](https://community.openvpn.net/openvpn/wiki/Hardening#Useof--tls-cipher) page of the OpenVPN wiki, TLS 1.2 is not supported by OpenVPN <2.3.3, so it uses a TLS 1.0 cipher by default, which is unsecure.
+According to the [Hardening](https://community.openvpn.net/openvpn/wiki/Hardening#Useof--tls-cipher) page of the OpenVPN wiki, TLS 1.2 is not supported by OpenVPN <2.3.3, so it uses a TLS 1.0 cipher by default, which is insecure.
 
 > The following are TLSv1.2 DHE + RSA choices, requiring a compatible peer running at least OpenVPN 2.3.3:
 - TLS-DHE-RSA-WITH-AES-256-GCM-SHA384
@@ -194,7 +196,7 @@ Thus, I have chosen `TLS-DHE-RSA-WITH-AES-128-GCM-SHA256` as the control channel
 
 OpenVPN uses a 2048 bits DH key [by default](https://github.com/OpenVPN/easy-rsa/blob/master/easyrsa3/vars.example#L97).
 
-2048 bits is OK, but both [NSA](https://cryptome.org/2016/01/CNSA-Suite-and-Quantum-Computing-FAQ.pdf) and [ANSSI](https://www.ssi.gouv.fr/uploads/2015/01/RGS_v-2-0_B1.pdf) recommend at least a 3072 bits for a future-proof key. Like RSA, the size of the key will have an impact on speed, I leave the choice to use a 2048, 3072 or 4096 bits key. 4096 bits is what's most used and recommened today, but 3072 bits is still good.
+2048 bits is OK, but both [NSA](https://cryptome.org/2016/01/CNSA-Suite-and-Quantum-Computing-FAQ.pdf) and [ANSSI](https://www.ssi.gouv.fr/uploads/2015/01/RGS_v-2-0_B1.pdf) recommend at least a 3072 bits for a future-proof key. Like RSA, the size of the key will have an impact on speed, I leave the choice to use a 2048, 3072 or 4096 bits key. 4096 bits is what's most used and recommended today, but 3072 bits is still good.
 
 In OpenVPN 2.4, we will be able to use ECDH key. It uses elliptic curves instead of prime numbers' factorization for a reduced key size and calculation time, thus it's faster and more secure.
 
@@ -218,6 +220,10 @@ SHA-1 is not safe anymore, so I use SHA-256 which is safe and widely used.
 [Source](https://openvpn.net/index.php/open-source/documentation/howto.html#security)
 
 TLS-Auth is not enabled by default by OpenVPN, but it is in this script.
+
+## Check for DNS leaks
+
+Go to [dnsleaktest.com](https://dnsleaktest.com/) or [ipleak.net](https://ipleak.net/) with your browser. Only your server's IP should show up.
 
 ## Credits & Licence
 
