@@ -17,7 +17,7 @@ modprobe ipv6
 Secondly, get the script and make it executable :
 
 ```bash
-https://raw.githubusercontent.com/lordnik22/OpenVPN-Installer/master/openvpn-install.sh
+wget https://raw.githubusercontent.com/lordnik22/OpenVPN-Installer/master/openvpn-install.sh
 chmod +x openvpn-install.sh
 ```
 
@@ -38,16 +38,17 @@ When OpenVPN is installed, you can run the script again, and you will get the ch
 
 ### Universale Port Mapper
 I use a Universale Port-Mapper at feste-ip.net. This makes it possible
-to access my home-network while I am connect from a IPv4-Network (e.g.
-most mobilphone-networks are in IPv4). They only support TCP (never
+to access my home-network while I am connected from a IPv4-Network (e.g.
+most mobilphone-networks are in IPv4). feste-ip.net only supports TCP (never
 tested with UDP).
 
-If you use such a port-mapper you need to provide the DNS or IP of
-that port-mapper instead of your device-ip.
+Because I used such a port-mapper I needed to supply the DNS/IP of that
+port-mapper to the script.
 
-I had to adjust the port in the client-file to the port they assigned to me.
+Additionally foreach client-file I generate I have to adjust the port
+which they assigned to me.
 
-For the IPv6 Target Port I could use the default OpenVPN port: 1194.
+For the IPv6 Target Port I used the default OpenVPN port: 1194.
 
 For the hostname I used my DDNS from no-ip.
 
@@ -56,11 +57,15 @@ For the hostname I used my DDNS from no-ip.
 I use a DDNS from no-ip.net. This makes it possible to access your
 home-network even if your ISP changes the IPv6 (untested). In theory
 the IPv6 should never change but I still use it because I already used
-it with my old ISP with IPv4.
+it with my old ISP which had IPv4.
 
 ## The fork of the fork of the fork
 
-This script is based on the great work of [Nyr and its contributors](https://github.com/Nyr/openvpn-install), [Angristan and its contributors](https://github.com/Angristan/OpenVPN-install) and [WMtech-1 and its contributors](https://github.com/wmtech-1/OpenVPN-Installer).
+This script is based on the great work of [Nyr and its
+contributors](https://github.com/Nyr/openvpn-install), [Angristan and
+its contributors](https://github.com/Angristan/OpenVPN-install) and
+[WMtech-1 and its
+contributors](https://github.com/wmtech-1/OpenVPN-Installer).
 
 While I was at my old ISP with IPv4 I used the script from Nyr. Now I
 am at a new ISP which uses DS-Lite. I therefore wanted to setup a
