@@ -1,0 +1,75 @@
+Welcome to the secure OpenVPN installer (github.com/wmtech-1/OpenVPN-Installer)
+
+I need to ask you a few questions before starting the setup
+You can leave the default options and just press enter if you are ok with them
+
+I need to know the IPv4 address of the network interface you want OpenVPN listening to.
+If your server is running behind a NAT, (e.g. LowEndSpirit, Scaleway) leave the IP address as it is. (local/private IP)
+Otherwise, it should be your public IPv4 address.
+IP address: your-domain.feste-ip.net
+
+What port do you want for OpenVPN?
+   1) Default: 1194
+   2) Custom
+   3) Random [49152-65535]
+Port choice [1-3]: 1
+
+Enable IPv6? (ensure that your machine has IPv6 support):
+   1) Yes (default)
+   2) No
+Enable IPv6 [1-2]: 1
+
+What protocol do you want for OpenVPN?
+Unless UDP is blocked, you should not use TCP (unnecessarily slower)
+Protocol [UDP/TCP]: TCP
+
+What DNS do you want to use with the VPN?
+   1) Current system resolvers (from /etc/resolv.conf)
+   2) Cloudflare (Anycast: worldwide)
+   3) Quad9 (Anycast: worldwide)
+   4) FDN (France)
+   5) DNS.WATCH (Germany)
+   6) OpenDNS (Anycast: worldwide)
+   7) Google (Anycast: worldwide)
+   8) Yandex Basic (Russia)
+   9) AdGuard DNS (Russia)
+DNS [1-9]: 1
+
+See https://github.com/wmtech-1/OpenVPN-Installer#encryption to learn more about 
+the encryption in OpenVPN and the choices I made in this script.
+Please note that all the choices proposed are secure (to a different degree)
+and are still viable to date, unlike some default OpenVPN options
+
+Choose which cipher you want to use for the data channel:
+   1) AES-128-CBC (fastest and sufficiently secure for everyone, recommended)
+   2) AES-192-CBC
+   3) AES-256-CBC
+Alternatives to AES, use them only if you know what you're doing.
+They are relatively slower but as secure as AES.
+   4) CAMELLIA-128-CBC
+   5) CAMELLIA-192-CBC
+   6) CAMELLIA-256-CBC
+   7) SEED-CBC
+Cipher [1-7]: 1
+
+Choose what size of Diffie-Hellman key you want to use:
+   1) 2048 bits (fastest)
+   2) 3072 bits (recommended, best compromise)
+   3) 4096 bits (most secure)
+DH key size [1-3]: 1
+
+Choose what size of RSA key you want to use:
+   1) 2048 bits (fastest)
+   2) 3072 bits (recommended, best compromise)
+   3) 4096 bits (most secure)
+RSA key size [1-3]: 1
+
+Do you want to protect the configuration file with a password?
+(e.g. encrypt the private key with a password)
+   1) Add a passwordless client
+   2) Use a password for the client
+Select an option [1-2]: 1
+
+Finally, tell me a name for the client certificate and configuration
+Use one word only, no special characters
+Client name: clientTCP
