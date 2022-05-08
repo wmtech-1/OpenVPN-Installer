@@ -6,6 +6,11 @@ This script will let you setup your own secure VPN server.
 
 Users with DS-Lite it's recommanded to first read the chapter [DS-Lite](/DS-Lite).
 
+I am at a new ISP which uses DS-Lite. I therefore wanted to setup a
+OpenVPN that is accessible over IPv6. I searched for similar projects
+and found the script from WMtech-1 and adjusted it to my need until it
+worked.
+
 ## Usage
 
 First, make sure IPv6 is enabled
@@ -67,11 +72,6 @@ its contributors](https://github.com/Angristan/OpenVPN-install) and
 [WMtech-1 and its
 contributors](https://github.com/wmtech-1/OpenVPN-Installer).
 
-While I was at my old ISP with IPv4 I used the script from Nyr. Now I
-am at a new ISP which uses DS-Lite. I therefore wanted to setup a
-OpenVPN that is accessible over IPv6. I searched for similar projects
-and found the script from WMtech-1 and adjusted it to my need until it
-worked.
 
 ## Forward to VMtech-1 for more details
 
