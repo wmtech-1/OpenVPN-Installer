@@ -16,31 +16,14 @@ if [[ ! -e /dev/net/tun ]]; then
 	exit
 fi
 
-# Check if CentOS 5
-if grep -qs "CentOS release 5" "/etc/redhat-release"; then
-	echo "CentOS 5 is too old and not supported. Please upgrade to CentOS 7"
-	exit
-fi
-
-# Check if CentOS 6
-if grep -qs "CentOS release 6" "/etc/redhat-release"; then
-	echo "CentOS 6 is too old and no longer supported. Please upgrade to CentOS 7"
-	exit
-fi
-
-if [[ -e /etc/centos-release || -e /etc/redhat-release || -e /etc/system-release ]]; then
-	OS=centos
-	if [[ -e /usr/lib/systemd/system/iptables.service ]]; then
-		IPTABLES='/etc/sysconfig/iptables'
-		IP6TABLES='/etc/sysconfig/ip6tables'
-	else
-		IPTABLES='/etc/iptables/iptables.rules'
-		IP6TABLES='/etc/ip6tables/ip6tables.rules'
-	fi
-	SYSCTL='/etc/sysctl.d/30-openvpn-forward.conf'
+if [[ -e /etc/os-release && $(cat /etc/os-release | grep "^NAME") == *"Raspbian"* ]]; then
+    OS=raspberrypios
+    PTABLES='/etc/iptables/rules.v4'
+    IP6TABLES='/etc/ip6tables/rules.v6'
+    SYSCTL='/etc/sysctl.d/30-openvpn-forward.conf'
 else
-	echo "Looks like you aren't running this installer on a CentOS or RedHat system"
-	exit
+    echo "Looks like you aren't running this installer on a Raspberry Pi"
+    exit
 fi
 
 newclient () {
@@ -58,11 +41,11 @@ newclient () {
  		echo "<ca>"
  		cat "/etc/openvpn/easy-rsa/pki/ca.crt"
  		echo "</ca>"
-		
+
  		echo "<cert>"
  		cat "/etc/openvpn/easy-rsa/pki/issued/$1.crt"
  		echo "</cert>"
-		
+
  		echo "<key>"
  		cat "/etc/openvpn/easy-rsa/pki/private/$1.key"
  		echo "</key>"
@@ -223,7 +206,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 						fi
 					fi
 				fi
-				yum remove openvpn -y
+				apt remove openvpn -y
 				OVPNS=$(ls /etc/openvpn/easy-rsa/pki/issued | awk -F "." {'print $1'})
  				for i in $OVPNS
  				do
@@ -285,7 +268,21 @@ else
  			echo "Random Port: $PORT"
  		;;
  	esac
-
+	echo ""
+	echo "Enable IPv6? (ensure that your machine has IPv6 support):"
+	echo "   1) Yes (default)"
+	echo "   2) No"
+	until [[ "$IPV6E" =~ ^[0-9]+$ ]] && [ "$IPV6E" -ge 1 -a "$IPV6E" -le 2 ]; do
+		read -rp "Enable IPv6 [1-2]: " -e -i 1 IPV6E
+	done
+	case $IPV6E in
+		1)
+		IPV6E="1"
+		;;
+		2)
+		IPV6E="0"
+		;;
+	esac
 	# If $IP is a private IP address, the server must be behind NAT
 	if echo "$IP" | grep -qE '^(10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.|192\.168)'; then
 		echo ""
@@ -296,12 +293,12 @@ else
 	echo "What protocol do you want for OpenVPN?"
 	echo "Unless UDP is blocked, you should not use TCP (unnecessarily slower)"
 	until [[ "$PROTOCOL" == "UDP" || "$PROTOCOL" == "TCP" ]]; do
-		read -rp "Protocol [UDP/TCP]: " -e -i UDP PROTOCOL
+	    read -rp "Protocol [UDP/TCP]: " -e -i UDP PROTOCOL
 	done
 	echo ""
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers (from /etc/resolv.conf)"
-	echo "   2) Cloudflare (Anycast: worldwide)" 
+	echo "   2) Cloudflare (Anycast: worldwide)"
 	echo "   3) Quad9 (Anycast: worldwide)"
 	echo "   4) FDN (France)"
 	echo "   5) DNS.WATCH (Germany)"
@@ -391,21 +388,6 @@ else
 		3)
 		RSA_KEY_SIZE="4096"
 		;;
-	esac	
-	echo ""
-	echo "Enable IPv6? (ensure that your machine has IPv6 support):"
-	echo "   1) Yes"
-	echo "   2) No (default)"
-	until [[ "$IPV6E" =~ ^[0-9]+$ ]] && [ "$IPV6E" -ge 1 -a "$IPV6E" -le 2 ]; do
-		read -rp "Enable IPv6 [1-2]: " -e -i 2 IPV6E
-	done
-	case $IPV6E in
-		1)
-		IPV6E="1"
-		;;
-		2)
-		IPV6E="0"
-		;;
 	esac
 	echo ""
 	echo "Do you want to protect the configuration file with a password?"
@@ -425,9 +407,9 @@ else
 	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
 
-	if [[ "$OS" = 'centos' ]]; then
-		yum install epel-release -y
-		yum install openvpn iptables openssl wget ca-certificates curl -y
+	if [[ "$OS" = 'raspberrypios' ]]; then
+		apt install epel-release -y
+		apt install openvpn iptables openssl wget ca-certificates curl -y
 		# Install iptables service
 		if [[ ! -e /usr/lib/systemd/system/iptables.service  && ! -e /etc/systemd/system/iptables.service ]]; then
 			mkdir /etc/iptables
@@ -502,7 +484,7 @@ WantedBy=multi-user.target" > /etc/systemd/system/ip6tables.service
 	else
 		NOGROUP=nobody
 	fi
-	
+
 	# Setup logging and logrotate
 	mkdir /var/log/openvpn
 	echo -e "/var/log/openvpn/openvpn.log {
@@ -570,7 +552,7 @@ push "redirect-gateway ipv6"
 
 	# Generate ipv4 server.conf
 	echo "port $PORT" >> /etc/openvpn/server.conf
-	echo "proto $(echo $PROTOCOL | tr '[:upper:]' '[:lower:]')" >> /etc/openvpn/server.conf
+	echo "proto $(echo $PROTOCOL | tr '[:upper:]' '[:lower:]')6" >> /etc/openvpn/server.conf
 	echo "dev tun
 user nobody
 group $NOGROUP
@@ -597,7 +579,7 @@ ifconfig-pool-persist ipp.txt" >> /etc/openvpn/server.conf
 		;;
 		2) # Cloudflare
  		echo 'push "dhcp-option DNS 1.0.0.1"' >> /etc/openvpn/server.conf
- 		echo 'push "dhcp-option DNS 1.1.1.1"' >> /etc/openvpn/server.conf	
+ 		echo 'push "dhcp-option DNS 1.1.1.1"' >> /etc/openvpn/server.conf
  		;;
 		3) #Quad9
 		echo 'push "dhcp-option DNS 9.9.9.9"' >> /etc/openvpn/server.conf
@@ -648,7 +630,7 @@ sndbuf 393216
 rcvbuf 393216" >> /etc/openvpn/server.conf
 	echo 'push "sndbuf 393216"' >> /etc/openvpn/server.conf
 	echo 'push "rcvbuf 393216"' >> /etc/openvpn/server.conf
-	
+
 	# Create log dir
 	mkdir -p /var/log/openvpn
 
@@ -705,7 +687,7 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 		# Save persitent OpenVPN rules
         iptables-save > $IPTABLES
 	fi
-	
+
 	if [[ "$IPV6E" = '1' ]]; then
 		# Set NAT for the VPN subnet
 		ip6tables -t nat -A POSTROUTING -o $NIC6 -s fd6c:62d9:eb8c::/112 -j MASQUERADE
@@ -727,7 +709,7 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 			# Save persitent OpenVPN rules
 			ip6tables-save > $IP6TABLES
 		fi
-	fi	
+	fi
 
 	# If SELinux is enabled and a custom port was selected, we need this
 	if hash sestatus 2>/dev/null; then
@@ -735,7 +717,7 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 			if [[ "$PORT" != '1194' ]]; then
 				# semanage isn't available in CentOS 6 by default
 				if ! hash semanage 2>/dev/null; then
-					yum install policycoreutils-python -y
+					apt install policycoreutils-python-utils -y
 				fi
 				if [[ "$PROTOCOL" = 'UDP' ]]; then
 					semanage port -a -t openvpn_port_t -p udp $PORT
@@ -767,7 +749,8 @@ rcvbuf 393216" >> /etc/openvpn/server.conf
 	elif [[ "$PROTOCOL" = 'TCP' ]]; then
 		echo "proto tcp-client" >> /etc/openvpn/client-template.txt
 	fi
-	echo "remote $IP $PORT
+	echo "remote $IP
+port $PORT
 dev tun
 resolv-retry infinite
 nobind
